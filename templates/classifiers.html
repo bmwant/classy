@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Classy</title>
+    
+    <!-- Bootstrap -->
+    <link href="/static/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/styles.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+      <div class="container-fluid">
+        <div class="navbar-header">
+          <a class="navbar-brand" href="/">Classy</a>
+        </div>
+        <div id="navbar" class="navbar-collapse collapse">
+          <ul class="nav navbar-nav navbar-right">
+            <li><a href="/">Classifier</a></li>
+            <li><a href="/neural">Nueral network</a></li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <div class="container-fluid">
+      <div class="row results-area">
+          <div class="col-md-8">
+              
+              <div class="alert alert-warning" role="alert" id="messages"></div>
+              
+              <button type="button" class="btn btn-info" onclick="javascript:getClasses();">
+                  Start classification
+              </button>
+              
+              <h2 class="sub-header">Comparing table</h2>
+              <div class="table-responsive">
+                <table class="table table-striped" id="res-table">
+                    
+                    <thead>
+                        <tr>
+                            <td>Picture</td>
+                            <td>Filename</td>
+                            <td><a href="#mse">MSE</a></td>
+                            <td><a href="#ssim">SSIM</a></td>
+                            <td><a href="#knn">kNN</a></td>
+                        </tr>
+                    </thead>
+                    
+                    <tbody id="res-table-body">
+
+                    </tbody>
+                    
+                    <tfoot id="table-footer">
+
+                    </tfoot>
+                    
+                </table>
+              </div>
+              
+              <h3 id="mse">MSE</h3>
+              <p>MSE of an estimator measures the average of the squares of the "errors", that is, the difference between the estimator and what is estimated.</p>
+              <img src="/static/img/compare_mse.png" />
+              
+              <h3 id="ssim">SSIM</h3>
+              <p>SSIM is the measuring of image quality based on an initial uncompressed or distortion-free image as reference.</p>
+              <img src="/static/img/compare_ssim.png" />
+              
+              <h3 id="knn">kNN</h3>
+              <p>kNN is a type of instance-based learning, or lazy learning, where the function is only approximated locally and all computation is deferred until classification. The kNN algorithm is among the simplest of all machine learning algorithms.</p>
+              <img src="/static/img/compare_knn.png" />
+              
+          </div>
+        </div>
+    </div>
+
+    
+    <script>
+        //var messageContainer = document.getElementById("messages");
+        var tableContainer = document.getElementById("res-table-body");
+        var tableFooter = document.getElementById("table-footer");
+        
+        var messageContainer = document.getElementById("messages");
+        
+        var icon_ok = document.createElement("span");
+        icon_ok.setAttribute("class", "glyphicon glyphicon-ok");
+        var icon_bad = document.createElement("span");
+        icon_bad.setAttribute("class", "glyphicon glyphicon-remove");
+        
+        var all_count = 0;
+        var mse_correct = 0;
+        var ssim_correct = 0;
+        var knn_correct = 0;
+        
+        function getClasses() {
+            tableContainer.innerHTML = "";
+            tableFooter.innerHTML = "";
+            var ws = new WebSocket("ws://localhost:8888/classifiers");
+            if ("WebSocket" in window) {
+                //messageContainer.innerHTML = "WebSocket is supported by your Browser!";
+                
+                ws.onopen = function() {
+                    messageContainer.innerHTML = "Connection is open!";
+                };
+                ws.onmessage = function (evt) { 
+                    all_count++;
+                    var received_msg = JSON.parse(evt.data);
+                    var row = tableContainer.insertRow(0);
+                    var pic_name;
+                    for(var k in received_msg)
+                        pic_name = k;
+                    var pic_class = pic_name.toString().split(".")[0].split("_")[0];
+                    var cell1 = row.insertCell(0);
+                    var cell2 = row.insertCell(1);
+                    var cell3 = row.insertCell(2);
+                    var cell4 = row.insertCell(3);
+                    var cell5 = row.insertCell(4);
+                    
+                    var pic_image = document.createElement("img");
+                    pic_image.setAttribute("src", "/test/" + pic_name)
+                        
+                    var mse_value = received_msg[pic_name]['mse'].value;
+                    var mse_class = received_msg[pic_name]['mse'].guess_class;
+                    var ssim_value = received_msg[pic_name]['ssim'].value;
+                    var ssim_class = received_msg[pic_name]['ssim'].guess_class;
+                    var knn_value = received_msg[pic_name]['knn'].value;
+                    var knn_class = received_msg[pic_name]['knn'].guess_class;
+                    
+                    var mse_value_text = document.createElement("p"); 
+                    var mse_class_text = document.createElement("p"); 
+                    mse_value_text.innerHTML = mse_value;
+                    mse_class_text.innerHTML = mse_class;
+
+                    var ssim_value_text = document.createElement("p"); 
+                    var ssim_class_text = document.createElement("p"); 
+                    ssim_value_text.innerHTML = ssim_value;
+                    ssim_class_text.innerHTML = ssim_class;
+                    
+                    var knn_value_text = document.createElement("p"); 
+                    var knn_class_text = document.createElement("p"); 
+                    knn_value_text.innerHTML = knn_value;
+                    knn_class_text.innerHTML = knn_class;
+                    
+                    cell1.appendChild(pic_image);
+                    cell2.innerHTML = pic_name;
+                    
+                    
+                    cell3.appendChild(mse_class_text); 
+                    cell3.appendChild(mse_value_text); 
+                    if (pic_class == mse_class) {
+                        cell3.appendChild(icon_ok.cloneNode(true));
+                        cell3.setAttribute("class", "bg-success");
+                        mse_correct++;
+                    } else {
+                        cell3.setAttribute("class", "bg-danger");
+                    }
+                    
+                    
+                    cell4.appendChild(ssim_class_text); 
+                    cell4.appendChild(ssim_value_text); 
+                    if (pic_class == ssim_class) {
+                        cell4.appendChild(icon_ok.cloneNode(true));
+                        cell4.setAttribute("class", "bg-success");
+                        ssim_correct++;
+                    } else {
+                        cell4.appendChild(icon_bad.cloneNode(true));
+                        cell4.setAttribute("class", "bg-danger");
+                    }
+                    
+                    
+                    cell5.appendChild(knn_class_text); 
+                    cell5.appendChild(knn_value_text); 
+                    if (pic_class == knn_class) {
+                        cell5.appendChild(icon_ok.cloneNode(true));
+                        cell5.setAttribute("class", "bg-success");
+                        knn_correct++;
+                    } else {
+                        cell5.appendChild(icon_bad.cloneNode(true));
+                        cell5.setAttribute("class", "bg-danger");
+                    }
+
+                };
+                ws.onclose = function() { 
+                    messageContainer.innerHTML = "Connection is closed...";
+                    
+                    var row = tableFooter.insertRow(0);
+                    var cell1 = row.insertCell(0);
+                    var cell2 = row.insertCell(1);
+                    var cell3 = row.insertCell(2);
+                    var cell4 = row.insertCell(3);
+                    var cell5 = row.insertCell(4);
+                    
+                    cell1.innerHTML = "Accuracy";
+                    cell2.innerHTML = "";
+                    cell3.innerHTML = (mse_correct / all_count * 100).toFixed(2).toString() + "%";
+                    cell4.innerHTML = (ssim_correct / all_count * 100).toFixed(2).toString() + "%";
+                    cell5.innerHTML = (knn_correct / all_count * 100).toFixed(2).toString() + "%";
+                };
+            } else {
+                messageContainer.innerHTML = "WebSocket NOT supported by your Browser!";
+            }
+        }
+    </script>
+</body>
+</html>

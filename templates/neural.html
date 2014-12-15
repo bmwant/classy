@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Classy</title>
+    
+    <!-- Bootstrap -->
+    <link href="/static/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/styles.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+      <div class="container-fluid">
+        <div class="navbar-header">
+          <a class="navbar-brand" href="/">Classy</a>
+        </div>
+        <div id="navbar" class="navbar-collapse collapse">
+          <ul class="nav navbar-nav navbar-right">
+            <li><a href="/">Classifier</a></li>
+            <li><a href="/neural">Nueral network</a></li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <div class="container-fluid">
+      <div class="row results-area">
+          <div class="col-md-8">
+            <h2 class="sub-header">Neural network</h2>
+            <p>Back propagation</p>
+            <button type="button" class="btn btn-info" onclick="javascript:trainNetwork()">Train network</button>
+              <button type="button" class="btn btn-success" onclick="javascript:activateNetwork()">Activate with images</button>
+              <button type="button" class="btn btn-danger" onclick="javascript:closeSocket()">Close connection</button>
+          <div class="table-responsive">
+            <table class="table" id="res-table">
+                <thead>
+                    <tr>
+                        <td>Picture</td>
+                        <td>Filename</td>
+                        <td>Network value</td>
+                        <td>Class</td>
+                    </tr>
+                </thead>
+                <tbody id="table-container">
+                </tbody>
+            </table>
+          </div>
+              <h3>Accuracy: <small id="accuracy">/no data/</small></h3>
+            <div>
+                <div class="alert alert-warning" role="alert" id="messages">
+                </div>
+            </div>
+              
+          </div>
+        </div>
+      </div>
+    
+    
+    <script>
+        var messageContainer = document.getElementById("messages");
+        var tableContainer = document.getElementById("table-container");
+        var all_count = 0;
+        var correct = 0;
+        function trainNetwork() {
+            ws = new WebSocket("ws://localhost:8888/ws");
+            if ("WebSocket" in window) {
+                //messageContainer.innerHTML = "WebSocket is supported by your Browser!";
+                
+                ws.onopen = function() {
+                    messageContainer.innerHTML = "Connection is open!";
+                };
+                ws.onmessage = function (evt) { 
+                    var received_msg = JSON.parse(evt.data);
+                    if(received_msg.type == 'train') {
+                        var alert_msg = document.createElement("p");
+                        alert_msg.innerHTML = received_msg.message;
+                        messageContainer.appendChild(alert_msg);
+                        tableContainer.innerHTML = "";
+                    }
+                    
+                    if(received_msg.type == 'activate') {
+                        messageContainer.innerHTML = "";
+                        all_count++;
+                        var pic_name = received_msg.data[0];
+                        var pic_res = received_msg.data[1];
+                        var row = tableContainer.insertRow(0);
+
+                        var pic_class = pic_name.toString().split(".")[0].split("_")[0];
+                        var cell1 = row.insertCell(0);
+                        var cell2 = row.insertCell(1);
+                        var cell3 = row.insertCell(2);
+                        var cell4 = row.insertCell(3);
+                        
+                        var pic_image = document.createElement("img");
+                        pic_image.setAttribute("src", "/test/" + pic_name)
+                        
+                        cell1.appendChild(pic_image);
+                        cell2.innerHTML = pic_name;
+                        cell3.innerHTML = pic_res;
+                        var pic_class_guess = Math.round(pic_res);
+                        cell4.innerHTML = pic_class_guess;
+                        
+                        if (pic_class == pic_class_guess) {
+                            row.setAttribute("class", "bg-success");
+                            correct++;
+                        } else {
+                            row.setAttribute("class", "bg-danger");
+                        }
+                    }
+                    
+                };
+                ws.onclose = function() { 
+                    messageContainer.innerHTML = "Connection is closed...";
+                    document.getElementById("accuracy").innerHTML = (correct / all_count * 100).toFixed(2).toString() + "%";
+                };
+            } else {
+                messageContainer.innerHTML = "WebSocket NOT supported by your Browser!";
+            }
+        }
+        
+        function activateNetwork() {
+            ws.send("Activate!");
+        }
+        
+        function closeSocket() {
+            ws.close();
+        }
+    </script>
+</body>
+</html>
